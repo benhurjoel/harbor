@@ -71,6 +71,10 @@ Harbor is opinionated about being a real macOS app:
 - pragmatic backend delegation where it makes sense
 - no unnecessary cloud dependency for a local utility
 
+## Contributing
+
+Feature requests and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to propose features, pick up open issues, and contribute implementation work.
+
 ## License
 
 Harbor is licensed under [GPL-3.0](https://github.com/tahseen-kakar/harbor/blob/main/LICENSE).
