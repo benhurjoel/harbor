@@ -2,8 +2,8 @@ import AppKit
 import Foundation
 
 @MainActor
-final class ExternalTorrentOpenCoordinator {
-    static let shared = ExternalTorrentOpenCoordinator()
+final class ExternalAddDownloadOpenCoordinator {
+    static let shared = ExternalAddDownloadOpenCoordinator()
 
     private var pendingURLs: [URL] = []
     private var handler: (([URL]) -> Void)?
@@ -12,12 +12,12 @@ final class ExternalTorrentOpenCoordinator {
 
     @discardableResult
     func receive(urls: [URL]) -> Bool {
-        let torrentURLs = urls.filter { DownloadSourceKind.detect(from: $0) == .torrentFile }
-        guard torrentURLs.isEmpty == false else {
+        let supportedURLs = urls.filter(Self.isSupportedExternalAddURL)
+        guard supportedURLs.isEmpty == false else {
             return false
         }
 
-        pendingURLs.append(contentsOf: torrentURLs)
+        pendingURLs.append(contentsOf: supportedURLs)
         bringHarborToFront()
         drainPendingURLsIfNeeded()
         return true
@@ -26,6 +26,15 @@ final class ExternalTorrentOpenCoordinator {
     func installHandler(_ handler: @escaping ([URL]) -> Void) {
         self.handler = handler
         drainPendingURLsIfNeeded()
+    }
+
+    private static func isSupportedExternalAddURL(_ url: URL) -> Bool {
+        switch DownloadSourceKind.detect(from: url) {
+        case .magnetLink, .torrentFile:
+            true
+        case .directURL, nil:
+            false
+        }
     }
 
     private func drainPendingURLsIfNeeded() {

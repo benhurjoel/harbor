@@ -15,6 +15,6 @@ final class HarborAppDelegate: NSObject, NSApplicationDelegate {
 
     @discardableResult
     private func handleOpenRequest(_ urls: [URL]) -> Bool {
-        ExternalTorrentOpenCoordinator.shared.receive(urls: urls)
+        ExternalAddDownloadOpenCoordinator.shared.receive(urls: urls)
     }
 }

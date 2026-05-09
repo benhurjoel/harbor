@@ -54,6 +54,19 @@ struct AddDownloadSheetDraft: Identifiable, Sendable {
         )
     }
 
+    static func linkOrMagnet(
+        _ url: URL,
+        destinationFolderURL: URL,
+        shouldStartImmediately: Bool
+    ) -> AddDownloadSheetDraft {
+        AddDownloadSheetDraft(
+            entryMode: .linkOrMagnet,
+            sourceURLText: url.absoluteString,
+            destinationFolderURL: destinationFolderURL,
+            shouldStartImmediately: shouldStartImmediately
+        )
+    }
+
     static func torrentFile(
         _ fileURL: URL,
         destinationFolderURL: URL,

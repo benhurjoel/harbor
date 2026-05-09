@@ -231,8 +231,8 @@ final class DownloadCenter {
         }
 
         hasInstalledExternalOpenHandler = true
-        ExternalTorrentOpenCoordinator.shared.installHandler { [weak self] urls in
-            self?.handleOpenedTorrentFiles(urls)
+        ExternalAddDownloadOpenCoordinator.shared.installHandler { [weak self] urls in
+            self?.handleOpenedExternalAddSources(urls)
         }
     }
 
@@ -246,13 +246,13 @@ final class DownloadCenter {
 
     func handleAddSheetDismissal() {
         addSheetDraft = nil
-        presentNextQueuedExternalAddSheetIfNeeded()
+        Task { @MainActor [weak self] in
+            self?.presentNextQueuedExternalAddSheetIfNeeded()
+        }
     }
 
-    private func handleOpenedTorrentFiles(_ urls: [URL]) {
-        let drafts = urls
-            .filter { DownloadSourceKind.detect(from: $0) == .torrentFile }
-            .map { makeExternalTorrentDraft(for: $0) }
+    private func handleOpenedExternalAddSources(_ urls: [URL]) {
+        let drafts = urls.compactMap { makeExternalAddSheetDraft(for: $0) }
 
         guard drafts.isEmpty == false else {
             return
@@ -1165,6 +1165,21 @@ final class DownloadCenter {
             destinationFolderURL: settings.defaultDestinationURL,
             shouldStartImmediately: settings.startDownloadsAutomatically
         )
+    }
+
+    private func makeExternalAddSheetDraft(for url: URL) -> AddDownloadSheetDraft? {
+        switch DownloadSourceKind.detect(from: url) {
+        case .magnetLink:
+            AddDownloadSheetDraft.linkOrMagnet(
+                url,
+                destinationFolderURL: settings.defaultDestinationURL,
+                shouldStartImmediately: settings.startDownloadsAutomatically
+            )
+        case .torrentFile:
+            makeExternalTorrentDraft(for: url)
+        case .directURL, nil:
+            nil
+        }
     }
 
     private func transitionStatus(
