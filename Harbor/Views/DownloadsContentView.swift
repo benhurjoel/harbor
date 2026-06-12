@@ -22,6 +22,7 @@ struct DownloadsContentView: View {
                         DownloadNameCell(item: item)
                     }
                     .customizationID("name")
+                    .defaultVisibility(.visible)
                     .disabledCustomizationBehavior(.visibility)
 
                     TableColumn("Status") { item in
