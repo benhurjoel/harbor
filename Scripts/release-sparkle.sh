@@ -26,6 +26,7 @@ SPARKLE_BIN_DIR="${SPARKLE_BIN_DIR:-}"
 DOWNLOAD_URL_PREFIX="${DOWNLOAD_URL_PREFIX:-https://tahseen-kakar.github.io/harbor/$UPDATES_SUBDIR/}"
 RELEASE_NOTES_URL_PREFIX="${RELEASE_NOTES_URL_PREFIX:-$DOWNLOAD_URL_PREFIX}"
 PUBLIC_FEED_URL="${PUBLIC_FEED_URL:-https://tahseen-kakar.github.io/harbor/appcast.xml}"
+MAXIMUM_DELTAS="${MAXIMUM_DELTAS:-0}"
 
 usage() {
   echo "Usage: $0 [v<version>|<version>]" >&2
@@ -185,11 +186,40 @@ ensure_pages_worktree() {
   git -C "$PAGES_WORKTREE" commit -m "Initialize gh-pages"
 }
 
+staple_sparkle_bundle() {
+  SPARKLE_BUNDLE_PATH="$1"
+
+  if [ ! -e "$SPARKLE_BUNDLE_PATH" ]; then
+    return
+  fi
+
+  echo "Stapling nested Sparkle bundle: ${SPARKLE_BUNDLE_PATH#$APP_PATH/}"
+  xcrun stapler staple "$SPARKLE_BUNDLE_PATH"
+}
+
+staple_sparkle_helpers() {
+  SPARKLE_FRAMEWORK_PATH="$APP_PATH/Contents/Frameworks/Sparkle.framework/Versions/Current"
+
+  if [ ! -e "$SPARKLE_FRAMEWORK_PATH" ]; then
+    return
+  fi
+
+  staple_sparkle_bundle "$SPARKLE_FRAMEWORK_PATH/Updater.app"
+  staple_sparkle_bundle "$SPARKLE_FRAMEWORK_PATH/XPCServices/Downloader.xpc"
+  staple_sparkle_bundle "$SPARKLE_FRAMEWORK_PATH/XPCServices/Installer.xpc"
+}
+
 echo "Stapling exported app..."
 xcrun stapler staple "$APP_PATH"
 
 echo "Validating stapled app..."
 xcrun stapler validate "$APP_PATH"
+
+staple_sparkle_helpers
+
+echo "Validating app after stapling nested Sparkle bundles..."
+xcrun stapler validate "$APP_PATH"
+codesign --verify --deep --strict --verbose=4 "$APP_PATH"
 
 ensure_release_tag
 ensure_github_release
@@ -220,6 +250,7 @@ echo "Generating Sparkle appcast..."
 "$SPARKLE_BIN_DIR/generate_appcast" \
   --download-url-prefix "$DOWNLOAD_URL_PREFIX" \
   --release-notes-url-prefix "$RELEASE_NOTES_URL_PREFIX" \
+  --maximum-deltas "$MAXIMUM_DELTAS" \
   -o "$PAGES_WORKTREE/appcast.xml" \
   "$UPDATES_DIR"
 
