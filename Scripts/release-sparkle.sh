@@ -192,38 +192,13 @@ ensure_pages_worktree() {
   git -C "$PAGES_WORKTREE" commit -m "Initialize gh-pages"
 }
 
-staple_sparkle_bundle() {
-  SPARKLE_BUNDLE_PATH="$1"
-
-  if [ ! -e "$SPARKLE_BUNDLE_PATH" ]; then
-    return
-  fi
-
-  echo "Stapling nested Sparkle bundle: ${SPARKLE_BUNDLE_PATH#$APP_PATH/}"
-  xcrun stapler staple "$SPARKLE_BUNDLE_PATH"
-}
-
-staple_sparkle_helpers() {
-  SPARKLE_FRAMEWORK_PATH="$APP_PATH/Contents/Frameworks/Sparkle.framework/Versions/Current"
-
-  if [ ! -e "$SPARKLE_FRAMEWORK_PATH" ]; then
-    return
-  fi
-
-  staple_sparkle_bundle "$SPARKLE_FRAMEWORK_PATH/Updater.app"
-  staple_sparkle_bundle "$SPARKLE_FRAMEWORK_PATH/XPCServices/Downloader.xpc"
-  staple_sparkle_bundle "$SPARKLE_FRAMEWORK_PATH/XPCServices/Installer.xpc"
-}
-
 echo "Stapling exported app..."
 xcrun stapler staple "$APP_PATH"
 
 echo "Validating stapled app..."
 xcrun stapler validate "$APP_PATH"
 
-staple_sparkle_helpers
-
-echo "Validating app after stapling nested Sparkle bundles..."
+echo "Validating app signature..."
 xcrun stapler validate "$APP_PATH"
 codesign --verify --deep --strict --verbose=4 "$APP_PATH"
 
@@ -246,11 +221,42 @@ hdiutil create \
   -format UDZO \
   "$DMG_PATH" >/dev/null
 
+verify_dmg_contents() {
+  VERIFY_MOUNT="$(mktemp -d "${TMPDIR:-/tmp}/harbor-dmg.XXXXXX")"
+
+  if ! hdiutil attach -readonly -nobrowse -mountpoint "$VERIFY_MOUNT" "$DMG_PATH" >/dev/null; then
+    rmdir "$VERIFY_MOUNT" >/dev/null 2>&1 || true
+    exit 1
+  fi
+
+  VERIFY_STATUS=0
+  # TODO: keep this gate near publishing; Sparkle installer failures only show up in shipped artifacts.
+  codesign --verify --deep --strict --verbose=4 "$VERIFY_MOUNT/$PROJECT_NAME.app" || VERIFY_STATUS="$?"
+
+  if [ "$VERIFY_STATUS" -eq 0 ]; then
+    codesign --verify --strict --verbose=4 "$VERIFY_MOUNT/$PROJECT_NAME.app/Contents/Frameworks/Sparkle.framework/Versions/Current/XPCServices/Installer.xpc" || VERIFY_STATUS="$?"
+  fi
+
+  hdiutil detach "$VERIFY_MOUNT" >/dev/null || true
+  rmdir "$VERIFY_MOUNT" >/dev/null 2>&1 || true
+
+  if [ "$VERIFY_STATUS" -ne 0 ]; then
+    exit "$VERIFY_STATUS"
+  fi
+}
+
+echo "Validating DMG contents..."
+verify_dmg_contents
+
 ensure_pages_worktree
 
 UPDATES_DIR="$PAGES_WORKTREE/$UPDATES_SUBDIR"
 mkdir -p "$UPDATES_DIR"
 cp "$DMG_PATH" "$UPDATES_DIR/$DMG_NAME"
+
+if [ -n "${RELEASE_NOTES:-}" ]; then
+  printf '%s\n' "$RELEASE_NOTES" > "$UPDATES_DIR/$PROJECT_NAME-$VERSION.md"
+fi
 
 echo "Generating Sparkle appcast..."
 "$SPARKLE_BIN_DIR/generate_appcast" \
