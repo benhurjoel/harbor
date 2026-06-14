@@ -630,7 +630,13 @@ final class DownloadCenter {
             return
         }
 
+        guard currentItem.status == .preparing else {
+            return
+        }
+
+        let startAttemptUpdatedAt = currentItem.updatedAt
         let hadBackendIdentifier = currentItem.backendIdentifier != nil
+        var activeBackendIdentifier = currentItem.backendIdentifier
 
         do {
             if let backendIdentifier = currentItem.backendIdentifier {
@@ -652,12 +658,12 @@ final class DownloadCenter {
                         destinationFolderPath: refreshedItem.destinationFolderPath
                     )
 
-                    guard let refreshedItem = item(for: id) else {
+                    guard item(for: id) != nil else {
                         await torrentService.remove(gid: replacementIdentifier)
                         return
                     }
 
-                    refreshedItem.backendIdentifier = replacementIdentifier
+                    activeBackendIdentifier = replacementIdentifier
                 }
             } else {
                 let backendIdentifier = try await torrentService.addDownload(
@@ -665,17 +671,30 @@ final class DownloadCenter {
                     sourceURL: currentItem.sourceURL,
                     destinationFolderPath: currentItem.destinationFolderPath
                 )
-                guard let refreshedItem = item(for: id) else {
+                guard item(for: id) != nil else {
                     await torrentService.remove(gid: backendIdentifier)
                     return
                 }
-                refreshedItem.backendIdentifier = backendIdentifier
+                activeBackendIdentifier = backendIdentifier
             }
 
-            guard let refreshedItem = item(for: id) else {
+            guard let refreshedItem = item(for: id),
+                  let activeBackendIdentifier else {
                 return
             }
 
+            let isSameStartAttempt = refreshedItem.status == .preparing
+                && refreshedItem.updatedAt == startAttemptUpdatedAt
+            let isSameTorrentAlreadyObserved = refreshedItem.backendIdentifier == activeBackendIdentifier
+                && (refreshedItem.status == .downloading || refreshedItem.status == .queued)
+
+            if isSameStartAttempt == false,
+               isSameTorrentAlreadyObserved == false {
+                await settleStartedTorrent(activeBackendIdentifier, for: refreshedItem)
+                return
+            }
+
+            refreshedItem.backendIdentifier = activeBackendIdentifier
             setStatus(for: refreshedItem, to: .downloading)
             refreshedItem.updatedAt = .now
             schedulePersist()
@@ -703,6 +722,35 @@ final class DownloadCenter {
             presentTorrentErrorIfNeeded(error)
             schedulePersist()
             startNextQueuedDownloadsIfNeeded()
+        }
+    }
+
+    private func settleStartedTorrent(
+        _ backendIdentifier: String,
+        for item: DownloadItem
+    ) async {
+        switch item.status {
+        case .paused:
+            item.backendIdentifier = backendIdentifier
+            try? await torrentService.pause(gid: backendIdentifier)
+            item.speedBytesPerSecond = 0
+            item.uploadBytesPerSecond = 0
+            item.updatedAt = .now
+            schedulePersist()
+
+        case .cancelled, .completed, .failed, .browserSessionRequired:
+            await torrentService.remove(gid: backendIdentifier)
+            if item.backendIdentifier == backendIdentifier {
+                item.backendIdentifier = nil
+            }
+            schedulePersist()
+
+        case .queued, .preparing, .downloading:
+            await torrentService.remove(gid: backendIdentifier)
+            if item.backendIdentifier == backendIdentifier {
+                item.backendIdentifier = nil
+                schedulePersist()
+            }
         }
     }
 

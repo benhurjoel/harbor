@@ -126,7 +126,7 @@ struct DownloadsContentView: View {
             Button("Continue in Harbor") {
                 center.continueInBrowser(id: item.id)
             }
-        } else {
+        } else if item.canPause || item.canResume {
             Button(item.canPause ? "Pause" : "Resume") {
                 center.togglePauseResume(id: item.id)
             }

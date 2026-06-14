@@ -28,10 +28,7 @@ struct HarborApp: App {
                     center.installExternalOpenHandlerIfNeeded()
                     await center.initializeIfNeeded()
                 }
-                // TODO: Revisit this if Harbor intentionally supports multiple main windows later.
-                .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
         }
-        .handlesExternalEvents(matching: ["*"])
         .defaultSize(width: 1_320, height: 820)
         .defaultPosition(.center)
         .windowToolbarStyle(.unified)

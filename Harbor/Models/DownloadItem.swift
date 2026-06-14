@@ -474,7 +474,7 @@ final class DownloadItem: Identifiable {
     }
 
     var canResume: Bool {
-        status == .paused || status == .failed || status == .queued || status == .cancelled
+        status == .paused || status == .failed || status == .queued
     }
 
     func makeRecord() -> DownloadRecord {

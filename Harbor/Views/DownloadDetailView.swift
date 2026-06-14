@@ -289,11 +289,21 @@ private struct DownloadActionRow: View {
                 Label("Continue", systemImage: "globe")
             }
             .buttonStyle(LiquidPillButtonStyle(prominent: true))
-        } else {
+        } else if item.status == .failed || item.status == .cancelled {
+            Button(action: retry) {
+                Label("Retry", systemImage: "arrow.clockwise")
+            }
+            .buttonStyle(LiquidPillButtonStyle(prominent: true))
+        } else if item.canPause || item.canResume {
             let isPause = item.canPause
 
             Button(action: togglePauseResume) {
                 Label(isPause ? "Pause" : "Resume", systemImage: isPause ? "pause.fill" : "play.fill")
+            }
+            .buttonStyle(LiquidPillButtonStyle(prominent: true))
+        } else if item.fileLocationURL != nil {
+            Button(action: openFile) {
+                Label("Open", systemImage: "doc.fill")
             }
             .buttonStyle(LiquidPillButtonStyle(prominent: true))
         }
@@ -301,12 +311,8 @@ private struct DownloadActionRow: View {
 
     @ViewBuilder
     private var secondaryAction: some View {
-        if item.status == .failed || item.status == .cancelled {
-            Button(action: retry) {
-                Label("Retry", systemImage: "arrow.clockwise")
-            }
-            .buttonStyle(LiquidPillButtonStyle(prominent: false))
-        } else if item.fileLocationURL != nil {
+        if item.fileLocationURL != nil,
+           item.status != .completed {
             Button(action: openFile) {
                 Label("Open", systemImage: "doc.fill")
             }
