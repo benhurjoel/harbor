@@ -777,6 +777,7 @@ private struct LiquidPillButtonStyle: ButtonStyle {
                     prominent ? .regular.tint(.accentColor).interactive() : .regular.interactive(),
                     in: .rect(cornerRadius: 16)
                 )
+                .contentShape(.rect(cornerRadius: 16))
         } else {
             label
                 .background(
@@ -789,6 +790,7 @@ private struct LiquidPillButtonStyle: ButtonStyle {
                             prominent ? Color.accentColor.opacity(0.24) : Color.secondary.opacity(0.16)
                         )
                 }
+                .contentShape(.rect(cornerRadius: 16))
         }
     }
 }

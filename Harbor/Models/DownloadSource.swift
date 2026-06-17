@@ -40,6 +40,10 @@ enum DownloadSourceKind: String, Codable, CaseIterable, Identifiable, Sendable {
 
         switch url.scheme?.lowercased() {
         case "http", "https":
+            if url.pathExtension.lowercased() == "torrent" {
+                return .torrentFile
+            }
+
             return .directURL
         case "magnet":
             return .magnetLink

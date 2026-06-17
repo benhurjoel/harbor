@@ -160,7 +160,7 @@ struct AddDownloadSheet: View {
                 return false
             }
 
-            return detectedKind == .directURL || detectedKind == .magnetLink
+            return detectedKind == .directURL || detectedKind == .magnetLink || detectedKind == .torrentFile
 
         case .torrentFile:
             guard let torrentFileURL else {
@@ -182,7 +182,7 @@ struct AddDownloadSheet: View {
             let trimmedURL = sourceURLText.trimmingCharacters(in: .whitespacesAndNewlines)
             guard let parsedURL = URL(string: trimmedURL),
                   let detectedKind = DownloadSourceKind.detect(from: parsedURL),
-                  detectedKind == .directURL || detectedKind == .magnetLink else {
+                  detectedKind == .directURL || detectedKind == .magnetLink || detectedKind == .torrentFile else {
                 validationMessage = String(
                     localized: "add.validation.linkOrMagnet",
                     defaultValue: "Enter a valid HTTP/HTTPS URL or magnet link.",
