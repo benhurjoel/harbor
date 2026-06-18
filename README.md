@@ -6,22 +6,22 @@
   <p><strong>A beautiful, fully native macOS download manager built for real Mac workflows.</strong></p>
 
   <p>
-    <a href="https://github.com/tahseen-kakar/harbor/releases/latest/download/Harbor.dmg">
+    <a href="https://github.com/thsnkhn/harbor/releases/latest/download/Harbor.dmg">
       <img src="https://img.shields.io/badge/download-latest%20DMG-007AFF?style=for-the-badge&logo=apple&logoColor=white" alt="Download latest DMG" />
     </a>
   </p>
 
   <p>
-    <a href="https://github.com/tahseen-kakar/harbor/releases/latest">
-      <img src="https://img.shields.io/github/v/release/tahseen-kakar/harbor?display_name=tag&label=release" alt="Latest release" />
+    <a href="https://github.com/thsnkhn/harbor/releases/latest">
+      <img src="https://img.shields.io/github/v/release/thsnkhn/harbor?display_name=tag&label=release" alt="Latest release" />
     </a>
-    <a href="https://github.com/tahseen-kakar/harbor/blob/main/LICENSE">
-      <img src="https://img.shields.io/github/license/tahseen-kakar/harbor" alt="License" />
+    <a href="https://github.com/thsnkhn/harbor/blob/main/LICENSE">
+      <img src="https://img.shields.io/github/license/thsnkhn/harbor" alt="License" />
     </a>
-    <a href="https://github.com/tahseen-kakar/harbor/releases/latest">
+    <a href="https://github.com/thsnkhn/harbor/releases/latest">
       <img src="https://img.shields.io/badge/platform-macOS%2015.6%2B-111111" alt="Platform macOS 15.6+" />
     </a>
-    <a href="https://github.com/tahseen-kakar/harbor/commits/main">
+    <a href="https://github.com/thsnkhn/harbor/commits/main">
       <img src="https://img.shields.io/badge/status-actively%20maintained-2ea043" alt="Actively maintained" />
     </a>
   </p>
@@ -58,13 +58,13 @@ If you want a downloader that respects the platform, respects your machine, and 
 Install with Homebrew:
 
 ```sh
-brew tap tahseen-kakar/harbor
+brew tap thsnkhn/harbor
 brew install --cask harbor
 ```
 
 Or download the latest DMG:
 
-- Download the [latest DMG](https://github.com/tahseen-kakar/harbor/releases/latest/download/Harbor.dmg)
+- Download the [latest DMG](https://github.com/thsnkhn/harbor/releases/latest/download/Harbor.dmg)
 - Drag `Harbor.app` into `Applications`
 
 Once installed, Harbor can check for new versions from the app menu and update through its built-in Sparkle updater.
@@ -84,4 +84,4 @@ Feature requests and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTI
 
 ## License
 
-Harbor is licensed under [GPL-3.0](https://github.com/tahseen-kakar/harbor/blob/main/LICENSE).
+Harbor is licensed under [GPL-3.0](https://github.com/thsnkhn/harbor/blob/main/LICENSE).
