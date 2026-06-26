@@ -706,11 +706,11 @@ enum MediaDownloadErrorClassifier {
             || normalized.contains("sign in")
             || normalized.contains("private")
             || normalized.contains("authentication") {
-            return "This media requires sign-in or is private. Harbor only downloads public media you have permission to save."
+            return "yt-dlp couldn’t access this link. It may need sign-in, be private, or be blocked by the platform."
         }
 
         if normalized.contains("copyright") || normalized.contains("drm") {
-            return "This media is protected and can’t be downloaded by Harbor."
+            return "yt-dlp couldn’t access a downloadable media stream for this link."
         }
 
         if normalized.contains("requested format is not available")

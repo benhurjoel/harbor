@@ -192,10 +192,25 @@ struct AddDownloadSheet: View {
             Toggle("I own this content or have permission to save it", isOn: $hasMediaSavePermission)
         } else if let mediaPreviewError, shouldShowMediaPreviewError {
             LabeledContent("Media") {
-                Label(mediaPreviewError, systemImage: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 8) {
+                    Label(mediaPreviewError, systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text("Harbor can still try this link with yt-dlp.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
+
+            Toggle("I own this content or have permission to save it", isOn: $hasMediaSavePermission)
+        } else if parsedLinkURL.map(isKnownMediaHost) == true {
+            LabeledContent("Media") {
+                Text("Harbor will try this link with yt-dlp.")
+                    .foregroundStyle(.secondary)
+            }
+
+            Toggle("I own this content or have permission to save it", isOn: $hasMediaSavePermission)
         }
     }
 
@@ -242,11 +257,11 @@ struct AddDownloadSheet: View {
                 return hasMediaSavePermission
             }
 
-            if isResolvingMedia, shouldWaitForMediaPreview(for: parsedURL) {
-                return false
+            if isKnownMediaHost(parsedURL) {
+                return isResolvingMedia == false && hasMediaSavePermission
             }
 
-            if mediaPreviewError != nil, isKnownMediaHost(parsedURL) {
+            if isResolvingMedia, shouldWaitForMediaPreview(for: parsedURL) {
                 return false
             }
 
@@ -340,6 +355,18 @@ struct AddDownloadSheet: View {
 
                 sourceKind = .mediaURL
                 requestMediaMetadata = metadata
+                requestMediaFormatPreference = mediaFormatPreference
+            } else if detectedKind == .directURL, isKnownMediaHost(parsedURL) {
+                guard hasMediaSavePermission else {
+                    validationMessage = String(
+                        localized: "add.validation.mediaPermission",
+                        defaultValue: "Confirm that you own this content or have permission to save it.",
+                        comment: "Validation message shown when a media URL is detected but permission has not been confirmed."
+                    )
+                    return
+                }
+
+                sourceKind = .mediaURL
                 requestMediaFormatPreference = mediaFormatPreference
             } else {
                 if mediaPreviewError != nil, isKnownMediaHost(parsedURL) {
