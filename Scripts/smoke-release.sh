@@ -67,6 +67,17 @@ OPEN_WAIT_PID="$!"
 sleep "$WAIT_SECONDS"
 assert_harbor_alive
 
+MEDIA_ARCH="$(uname -m)"
+YTDLP_PATH="$APP_PATH/Contents/Resources/MediaRuntime/$MEDIA_ARCH/bin/yt-dlp"
+
+if [ -x "$YTDLP_PATH" ]; then
+  echo "Testing bundled yt-dlp helper..."
+  "$YTDLP_PATH" --version >/dev/null
+else
+  echo "Expected bundled yt-dlp helper at: $YTDLP_PATH" >&2
+  exit 1
+fi
+
 echo "Testing .torrent external open..."
 open -a "$APP_PATH" "$TORRENT_FILE"
 sleep "$SETTLE_SECONDS"

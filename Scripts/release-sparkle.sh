@@ -40,6 +40,7 @@ TEAM_ID="${TEAM_ID:-2837P98423}"
 SIGN_IDENTITY="${SIGN_IDENTITY:-Developer ID Application: ENOU Labs LLC ($TEAM_ID)}"
 EXPORT_OPTIONS_PLIST_PROVIDED="${EXPORT_OPTIONS_PLIST+x}"
 EXPORT_OPTIONS_PLIST="${EXPORT_OPTIONS_PLIST:-$PROJECT_DIR/build/ExportOptionsDeveloperID.plist}"
+YT_DLP_ENTITLEMENTS="${YT_DLP_ENTITLEMENTS:-$PROJECT_DIR/Scripts/yt-dlp.entitlements}"
 REQUIRE_RELEASE_NOTES="${REQUIRE_RELEASE_NOTES:-YES}"
 
 usage() {
@@ -187,7 +188,7 @@ resign_exported_app() {
 
   for architecture in arm64 x86_64; do
     if [ -f "$APP_PATH/Contents/Resources/MediaRuntime/$architecture/bin/yt-dlp" ]; then
-      codesign --force --sign "$SIGN_IDENTITY" --options runtime --timestamp "$APP_PATH/Contents/Resources/MediaRuntime/$architecture/bin/yt-dlp"
+      codesign --force --sign "$SIGN_IDENTITY" --options runtime --timestamp --entitlements "$YT_DLP_ENTITLEMENTS" "$APP_PATH/Contents/Resources/MediaRuntime/$architecture/bin/yt-dlp"
     fi
   done
 
