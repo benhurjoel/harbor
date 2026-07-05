@@ -146,7 +146,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "请确认您拥有该内容的所有权，或已获得保存该内容的合法授权。‌"
+            "value" : "请确认您拥有该内容的所有权，或已获得保存该内容的合法授权。"
           }
         }
       }
@@ -337,7 +337,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无法恢复下载‌"
+            "value" : "无法恢复下载"
           }
         }
       }
@@ -660,7 +660,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "点击任意一行，即可查看任务进度、下载速度、文件保存位置以及恢复操作选项‌。"
+            "value" : "点击任意一行，即可查看任务进度、下载速度、文件保存位置以及恢复操作选项。"
           }
         }
       }
@@ -754,7 +754,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "你可以随时关闭这个页面，让下载任务保持等待状态，之后在其他浏览器中继续操作。‌"
+            "value" : "你可以随时关闭这个页面，让下载任务保持等待状态，之后在其他浏览器中继续操作。"
           }
         }
       }
@@ -1053,7 +1053,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "重启后任务自动暂停‌。"
+            "value" : "重启后任务自动暂停。"
           }
         }
       }
@@ -1155,7 +1155,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "该站点要求先完成浏览器会话验证，Harbor才能执行文件下载操作‌。"
+            "value" : "该站点要求先完成浏览器会话验证，Harbor才能执行文件下载操作。"
           }
         }
       }
@@ -1286,7 +1286,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "已完成的文件会保留在列表中，直到你手动将它们清除‌。"
+            "value" : "已完成的文件会保留在列表中，直到你手动将它们清除。"
           }
         }
       }
@@ -1419,7 +1419,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "我拥有该内容的版权，或已获得保存该内容的合法授权‌"
+            "value" : "我拥有该内容的版权，或已获得保存该内容的合法授权"
           }
         }
       }
@@ -1778,7 +1778,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "网络或文件系统错误将在此处显示，并支持重试。‌"
+            "value" : "网络或文件系统错误将在此处显示，并支持重试。"
           }
         }
       }
@@ -2633,7 +2633,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此处显示排队中和正在运行的传输任务‌。"
+            "value" : "此处显示排队中和正在运行的传输任务。"
           }
         }
       }
@@ -3247,7 +3247,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "最早优先‌"
+            "value" : "最早优先"
           }
         }
       }
