@@ -22,14 +22,15 @@ ARCHIVE_PATH="${ARCHIVE_PATH:-$PROJECT_DIR/build/archive/$PROJECT_NAME.xcarchive
 EXPORT_DIR="$PROJECT_DIR/build/export"
 APP_PATH="$EXPORT_DIR/Harbor.app"
 OUTPUT_DIR="${OUTPUT_DIR:-$PROJECT_DIR/build/release}"
+APPCAST_SOURCE_DIR="${APPCAST_SOURCE_DIR:-$OUTPUT_DIR/appcast-source}"
 STAGING_ROOT="${STAGING_ROOT:-$PROJECT_DIR/build/dmg-root}"
 PAGES_WORKTREE="${PAGES_WORKTREE:-$PROJECT_DIR/.worktrees/gh-pages}"
 PAGES_BRANCH="${PAGES_BRANCH:-gh-pages}"
 PAGES_REMOTE="${PAGES_REMOTE:-origin}"
 UPDATES_SUBDIR="${UPDATES_SUBDIR:-updates}"
 SPARKLE_BIN_DIR="${SPARKLE_BIN_DIR:-}"
-DOWNLOAD_URL_PREFIX="${DOWNLOAD_URL_PREFIX:-https://thsnkhn.github.io/harbor/$UPDATES_SUBDIR/}"
-RELEASE_NOTES_URL_PREFIX="${RELEASE_NOTES_URL_PREFIX:-$DOWNLOAD_URL_PREFIX}"
+DOWNLOAD_URL_PREFIX="${DOWNLOAD_URL_PREFIX:-}"
+RELEASE_NOTES_URL_PREFIX="${RELEASE_NOTES_URL_PREFIX:-}"
 PUBLIC_FEED_URL="${PUBLIC_FEED_URL:-https://thsnkhn.github.io/harbor/appcast.xml}"
 MAXIMUM_DELTAS="${MAXIMUM_DELTAS:-0}"
 RUN_RELEASE_SMOKE="${RUN_RELEASE_SMOKE:-YES}"
@@ -274,20 +275,6 @@ elif [ ! -d "$APP_PATH" ]; then
   exit 1
 fi
 
-if [ -z "$SPARKLE_BIN_DIR" ]; then
-  SPARKLE_BIN_DIR="$(find "$HOME/Library/Developer/Xcode/DerivedData" -path '*/SourcePackages/artifacts/sparkle/Sparkle/bin' -type d 2>/dev/null | head -n 1 || true)"
-fi
-
-if [ -z "$SPARKLE_BIN_DIR" ] || [ ! -x "$SPARKLE_BIN_DIR/generate_appcast" ]; then
-  echo "Sparkle tools not found. Set SPARKLE_BIN_DIR to the directory containing generate_appcast and generate_keys." >&2
-  exit 1
-fi
-
-case "$DOWNLOAD_URL_PREFIX" in
-  */) ;;
-  *) DOWNLOAD_URL_PREFIX="$DOWNLOAD_URL_PREFIX/" ;;
-esac
-
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Contents/Info.plist" 2>/dev/null || true)"
 BUILD_NUMBER="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP_PATH/Contents/Info.plist" 2>/dev/null || true)"
 
@@ -306,6 +293,33 @@ if [ -n "$REQUESTED_TAG" ]; then
   fi
 else
   RELEASE_TAG="v$VERSION"
+fi
+
+if [ -z "$DOWNLOAD_URL_PREFIX" ]; then
+  DOWNLOAD_URL_PREFIX="https://github.com/$GITHUB_REPO/releases/download/$RELEASE_TAG/"
+fi
+
+if [ -z "$RELEASE_NOTES_URL_PREFIX" ]; then
+  RELEASE_NOTES_URL_PREFIX="https://thsnkhn.github.io/harbor/$UPDATES_SUBDIR/"
+fi
+
+case "$DOWNLOAD_URL_PREFIX" in
+  */) ;;
+  *) DOWNLOAD_URL_PREFIX="$DOWNLOAD_URL_PREFIX/" ;;
+esac
+
+case "$RELEASE_NOTES_URL_PREFIX" in
+  */) ;;
+  *) RELEASE_NOTES_URL_PREFIX="$RELEASE_NOTES_URL_PREFIX/" ;;
+esac
+
+if [ -z "$SPARKLE_BIN_DIR" ]; then
+  SPARKLE_BIN_DIR="$(find "$HOME/Library/Developer/Xcode/DerivedData" -path '*/SourcePackages/artifacts/sparkle/Sparkle/bin' -type d 2>/dev/null | head -n 1 || true)"
+fi
+
+if [ -z "$SPARKLE_BIN_DIR" ] || [ ! -x "$SPARKLE_BIN_DIR/generate_appcast" ]; then
+  echo "Sparkle tools not found. Set SPARKLE_BIN_DIR to the directory containing generate_appcast and generate_keys." >&2
+  exit 1
 fi
 
 DMG_NAME="$PROJECT_NAME-$VERSION.dmg"
@@ -402,11 +416,15 @@ verify_dmg_contents
 ensure_pages_worktree
 
 UPDATES_DIR="$PAGES_WORKTREE/$UPDATES_SUBDIR"
+rm -rf "$APPCAST_SOURCE_DIR"
+mkdir -p "$APPCAST_SOURCE_DIR"
 mkdir -p "$UPDATES_DIR"
-cp "$DMG_PATH" "$UPDATES_DIR/$DMG_NAME"
+cp "$DMG_PATH" "$APPCAST_SOURCE_DIR/$DMG_NAME"
+rm -f "$UPDATES_DIR/$DMG_NAME"
 
 if [ -n "${RELEASE_NOTES:-}" ]; then
-  printf '%s\n' "$RELEASE_NOTES" > "$UPDATES_DIR/$PROJECT_NAME-$VERSION.md"
+  printf '%s\n' "$RELEASE_NOTES" > "$APPCAST_SOURCE_DIR/$PROJECT_NAME-$VERSION.md"
+  cp "$APPCAST_SOURCE_DIR/$PROJECT_NAME-$VERSION.md" "$UPDATES_DIR/$PROJECT_NAME-$VERSION.md"
 fi
 
 echo "Generating Sparkle appcast..."
@@ -415,7 +433,7 @@ echo "Generating Sparkle appcast..."
   --release-notes-url-prefix "$RELEASE_NOTES_URL_PREFIX" \
   --maximum-deltas "$MAXIMUM_DELTAS" \
   -o "$PAGES_WORKTREE/appcast.xml" \
-  "$UPDATES_DIR"
+  "$APPCAST_SOURCE_DIR"
 
 touch "$PAGES_WORKTREE/.nojekyll"
 
