@@ -5,6 +5,7 @@ struct RootView: View {
     let center: DownloadCenter
     let settings: AppSettingsStore
     @State private var isDownloadDropTargeted = false
+    @FocusState private var isSearchFocused: Bool
 
     private enum Layout {
         static let sidebarMinWidth: CGFloat = 200
@@ -43,6 +44,8 @@ struct RootView: View {
         }
         .navigationSplitViewStyle(.balanced)
         .searchable(text: $center.searchText, placement: .toolbar, prompt: "Search downloads")
+        .searchFocused($isSearchFocused)
+        .focusedSceneValue(\.focusDownloadSearch, focusSearch)
         .sheet(item: $center.addSheetDraft, onDismiss: {
             center.handleAddSheetDismissal()
         }) { draft in
@@ -111,6 +114,10 @@ struct RootView: View {
         DownloadSourceImportService.loadSupportedURLs(from: providers) { urls in
             center.receiveExternalAddSources(urls)
         }
+    }
+
+    private func focusSearch() {
+        isSearchFocused = true
     }
 }
 

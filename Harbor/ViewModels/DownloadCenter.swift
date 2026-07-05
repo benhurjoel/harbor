@@ -20,13 +20,31 @@ final class DownloadCenter {
     @ObservationIgnored private var hasShownTorrentBinaryAlert = false
     @ObservationIgnored private var hasShownMediaRuntimeAlert = false
     @ObservationIgnored private var isShuttingDown = false
+    @ObservationIgnored private var isReconcilingSelection = false
     @ObservationIgnored private var mediaStartIDs: Set<UUID> = []
     @ObservationIgnored private var pendingExternalAddSheetDrafts: [AddDownloadSheetDraft] = []
 
     var downloads: [DownloadItem] = []
-    var selectedFilter: DownloadFilter = .all
-    var selectedDownloadID: UUID?
-    var searchText = ""
+    var selectedFilter: DownloadFilter = .all {
+        didSet {
+            pruneSelectionToVisibleDownloads()
+        }
+    }
+    var selectedDownloadID: UUID? {
+        didSet {
+            reconcileSelectionFromPrimaryDownload()
+        }
+    }
+    var selectedDownloadIDs: Set<UUID> = [] {
+        didSet {
+            reconcilePrimaryDownloadFromSelection()
+        }
+    }
+    var searchText = "" {
+        didSet {
+            pruneSelectionToVisibleDownloads()
+        }
+    }
     var sortMode: DownloadSortMode = .newest
     var addSheetDraft: AddDownloadSheetDraft?
     var activeBrowserSession: BrowserDownloadSession?
@@ -109,7 +127,7 @@ final class DownloadCenter {
                 }
 
             downloads = restoredItems
-            selectedDownloadID = downloads.first?.id
+            selectDownload(downloads.first?.id)
 
             if settings.startDownloadsAutomatically {
                 startNextQueuedDownloadsIfNeeded()
@@ -170,6 +188,67 @@ final class DownloadCenter {
         return downloads.first { $0.id == selectedDownloadID }
     }
 
+    var selectedDownloads: [DownloadItem] {
+        orderedDownloads(for: selectedDownloadIDs)
+    }
+
+    private func reconcileSelectionFromPrimaryDownload() {
+        guard isReconcilingSelection == false else {
+            return
+        }
+
+        isReconcilingSelection = true
+        defer {
+            isReconcilingSelection = false
+        }
+
+        if let selectedDownloadID {
+            selectedDownloadIDs = [selectedDownloadID]
+        } else {
+            selectedDownloadIDs = []
+        }
+    }
+
+    private func reconcilePrimaryDownloadFromSelection() {
+        guard isReconcilingSelection == false else {
+            return
+        }
+
+        isReconcilingSelection = true
+        defer {
+            isReconcilingSelection = false
+        }
+
+        if let selectedDownloadID,
+           selectedDownloadIDs.contains(selectedDownloadID) {
+            return
+        }
+
+        selectedDownloadID = orderedDownloads(for: selectedDownloadIDs).first?.id
+    }
+
+    private func selectDownload(_ id: UUID?) {
+        selectedDownloadID = id
+    }
+
+    private func pruneSelectionToVisibleDownloads() {
+        let visibleIDs = Set(filteredDownloads.map(\.id))
+        selectedDownloadIDs.formIntersection(visibleIDs)
+
+        if let selectedDownloadID,
+           visibleIDs.contains(selectedDownloadID) == false {
+            selectDownload(orderedDownloads(for: selectedDownloadIDs).first?.id)
+        }
+    }
+
+    private func orderedDownloads(for ids: Set<UUID>) -> [DownloadItem] {
+        guard ids.isEmpty == false else {
+            return []
+        }
+
+        return filteredDownloads.filter { ids.contains($0.id) }
+    }
+
     var totalActiveSpeed: Double {
         downloads
             .filter(\.isRunning)
@@ -211,35 +290,28 @@ final class DownloadCenter {
     }
 
     var canToggleSelectedDownload: Bool {
-        guard let selectedDownload else {
-            return false
+        selectedDownloads.contains { item in
+            item.status == .browserSessionRequired
+                || item.canPause
+                || item.canResume
+                || item.status == .queued
         }
-
-        return selectedDownload.status == .browserSessionRequired
-            || selectedDownload.canPause
-            || selectedDownload.canResume
     }
 
     var canRetrySelectedDownload: Bool {
-        guard let selectedDownload else {
-            return false
+        selectedDownloads.contains { item in
+            item.status == .failed || item.status == .cancelled
         }
-
-        return selectedDownload.status == .failed
-            || selectedDownload.status == .cancelled
     }
 
     var canCancelSelectedDownload: Bool {
-        guard let selectedDownload else {
-            return false
+        selectedDownloads.contains { item in
+            item.status != .completed && item.status != .cancelled
         }
-
-        return selectedDownload.status != .completed
-            && selectedDownload.status != .cancelled
     }
 
     var canOpenSelectedDownload: Bool {
-        selectedDownload?.fileLocationURL != nil
+        selectedDownloads.contains { $0.fileLocationURL != nil }
     }
 
     func count(for filter: DownloadFilter) -> Int {
@@ -381,7 +453,7 @@ final class DownloadCenter {
         }
 
         downloads.insert(item, at: 0)
-        selectedDownloadID = item.id
+        selectDownload(item.id)
 
         if request.shouldStartImmediately {
             startOrQueueDownload(id: item.id)
@@ -402,11 +474,13 @@ final class DownloadCenter {
     }
 
     func togglePauseResumeForSelection() {
-        guard let selectedDownloadID else {
-            return
-        }
+        togglePauseResume(ids: selectedDownloadIDs)
+    }
 
-        togglePauseResume(id: selectedDownloadID)
+    func togglePauseResume(ids: Set<UUID>) {
+        for item in orderedDownloads(for: ids) {
+            togglePauseResume(id: item.id)
+        }
     }
 
     func togglePauseResume(id: UUID) {
@@ -427,11 +501,13 @@ final class DownloadCenter {
     }
 
     func retrySelectedDownload() {
-        guard let selectedDownloadID else {
-            return
-        }
+        retryDownloads(ids: selectedDownloadIDs)
+    }
 
-        retryDownload(id: selectedDownloadID)
+    func retryDownloads(ids: Set<UUID>) {
+        for item in orderedDownloads(for: ids) where item.status == .failed || item.status == .cancelled {
+            retryDownload(id: item.id)
+        }
     }
 
     func retryDownload(id: UUID) {
@@ -500,11 +576,13 @@ final class DownloadCenter {
     }
 
     func cancelSelectedDownload() {
-        guard let selectedDownloadID else {
-            return
-        }
+        cancelDownloads(ids: selectedDownloadIDs)
+    }
 
-        cancelDownload(id: selectedDownloadID)
+    func cancelDownloads(ids: Set<UUID>) {
+        for item in orderedDownloads(for: ids) where item.status != .completed && item.status != .cancelled {
+            cancelDownload(id: item.id)
+        }
     }
 
     func cancelDownload(id: UUID) {
@@ -549,11 +627,13 @@ final class DownloadCenter {
     }
 
     func removeSelectedDownload() {
-        guard let selectedDownloadID else {
-            return
-        }
+        removeDownloads(ids: selectedDownloadIDs)
+    }
 
-        removeDownload(id: selectedDownloadID)
+    func removeDownloads(ids: Set<UUID>) {
+        for item in orderedDownloads(for: ids) {
+            removeDownload(id: item.id)
+        }
     }
 
     func removeDownload(id: UUID) {
@@ -585,10 +665,12 @@ final class DownloadCenter {
             }
         }
 
+        let removedPrimarySelection = selectedDownloadID == id
         downloads.removeAll { $0.id == id }
+        selectedDownloadIDs.remove(id)
 
-        if selectedDownloadID == id {
-            selectedDownloadID = filteredDownloads.first?.id ?? downloads.first?.id
+        if removedPrimarySelection && selectedDownloadIDs.isEmpty {
+            selectDownload(filteredDownloads.first?.id ?? downloads.first?.id)
         }
 
         schedulePersist()
@@ -600,8 +682,11 @@ final class DownloadCenter {
     func clearCompleted() {
         cleanupBackendIdentifiers(for: downloads.filter { $0.status == .completed })
         downloads.removeAll { $0.status == .completed }
-        if selectedDownload?.status == .completed {
-            selectedDownloadID = filteredDownloads.first?.id ?? downloads.first?.id
+        selectedDownloadIDs = selectedDownloadIDs.filter { id in
+            downloads.contains { $0.id == id }
+        }
+        if selectedDownloadIDs.isEmpty {
+            selectDownload(filteredDownloads.first?.id ?? downloads.first?.id)
         }
         schedulePersist()
     }
@@ -609,18 +694,28 @@ final class DownloadCenter {
     func clearFailed() {
         cleanupBackendIdentifiers(for: downloads.filter { $0.status == .failed })
         downloads.removeAll { $0.status == .failed }
-        if selectedDownload?.status == .failed {
-            selectedDownloadID = filteredDownloads.first?.id ?? downloads.first?.id
+        selectedDownloadIDs = selectedDownloadIDs.filter { id in
+            downloads.contains { $0.id == id }
+        }
+        if selectedDownloadIDs.isEmpty {
+            selectDownload(filteredDownloads.first?.id ?? downloads.first?.id)
         }
         schedulePersist()
     }
 
     func revealSelectedInFinder() {
-        guard let selectedDownloadID else {
-            return
-        }
+        revealInFinder(ids: selectedDownloadIDs)
+    }
 
-        revealInFinder(id: selectedDownloadID)
+    func revealInFinder(ids: Set<UUID>) {
+        let items = orderedDownloads(for: ids)
+        let fileURLs = items.compactMap(\.fileLocationURL)
+
+        if fileURLs.isEmpty == false {
+            NSWorkspace.shared.activateFileViewerSelecting(fileURLs)
+        } else if let firstItem = items.first {
+            NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: firstItem.destinationFolderPath)
+        }
     }
 
     func revealInFinder(id: UUID) {
@@ -636,11 +731,17 @@ final class DownloadCenter {
     }
 
     func openSelectedDownload() {
-        guard let selectedDownloadID else {
-            return
-        }
+        openDownloads(ids: selectedDownloadIDs)
+    }
 
-        openDownload(id: selectedDownloadID)
+    func openDownloads(ids: Set<UUID>) {
+        for item in orderedDownloads(for: ids) {
+            guard let url = item.fileLocationURL else {
+                continue
+            }
+
+            NSWorkspace.shared.open(url)
+        }
     }
 
     func openDownload(id: UUID) {
@@ -656,6 +757,74 @@ final class DownloadCenter {
             return
         }
 
+        copySourceText(sourceText)
+    }
+
+    func copySourceURLs(ids: Set<UUID>) {
+        let sourceText = orderedDownloads(for: ids)
+            .map(\.sourceDisplayText)
+            .joined(separator: "\n")
+
+        guard sourceText.isEmpty == false else {
+            return
+        }
+
+        copySourceText(sourceText)
+    }
+
+    func contextMenuDownloadIDs(for id: UUID) -> Set<UUID> {
+        if selectedDownloadIDs.contains(id) {
+            return selectedDownloadIDs
+        }
+
+        return [id]
+    }
+
+    // TODO: Move batch action eligibility into a small policy type if row actions keep growing.
+    func canContinueInBrowser(ids: Set<UUID>) -> Bool {
+        let items = orderedDownloads(for: ids)
+        return items.count == 1 && items.first?.status == .browserSessionRequired
+    }
+
+    func canPauseDownloads(ids: Set<UUID>) -> Bool {
+        orderedDownloads(for: ids).contains { item in
+            item.canPause || item.status == .queued
+        }
+    }
+
+    func canResumeDownloads(ids: Set<UUID>) -> Bool {
+        orderedDownloads(for: ids).contains(where: \.canResume)
+    }
+
+    func canRetryDownloads(ids: Set<UUID>) -> Bool {
+        orderedDownloads(for: ids).contains { item in
+            item.status == .failed || item.status == .cancelled
+        }
+    }
+
+    func canCancelDownloads(ids: Set<UUID>) -> Bool {
+        orderedDownloads(for: ids).contains { item in
+            item.status != .completed && item.status != .cancelled
+        }
+    }
+
+    func canOpenDownloads(ids: Set<UUID>) -> Bool {
+        orderedDownloads(for: ids).contains { $0.fileLocationURL != nil }
+    }
+
+    func pauseDownloads(ids: Set<UUID>) {
+        for item in orderedDownloads(for: ids) where item.canPause || item.status == .queued {
+            pauseDownload(id: item.id)
+        }
+    }
+
+    func resumeDownloads(ids: Set<UUID>) {
+        for item in orderedDownloads(for: ids) where item.canResume {
+            startOrQueueDownload(id: item.id)
+        }
+    }
+
+    private func copySourceText(_ sourceText: String) {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(sourceText, forType: .string)

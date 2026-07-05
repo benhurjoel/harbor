@@ -3,6 +3,7 @@ import SwiftUI
 struct DownloadCommands: Commands {
     let center: DownloadCenter
     let updater: AppUpdater
+    @FocusedValue(\.focusDownloadSearch) private var focusDownloadSearch
 
     var body: some Commands {
         SidebarCommands()
@@ -22,6 +23,12 @@ struct DownloadCommands: Commands {
                 center.addDownloadSourcesFromPasteboard()
             }
             .keyboardShortcut("v", modifiers: [.command, .shift])
+
+            Button("Find Downloads") {
+                focusDownloadSearch?()
+            }
+            .keyboardShortcut("f")
+            .disabled(focusDownloadSearch == nil)
 
             Divider()
 
@@ -85,5 +92,16 @@ struct DownloadCommands: Commands {
             }
             .disabled(center.hasFailedDownloads == false)
         }
+    }
+}
+
+struct FocusDownloadSearchKey: FocusedValueKey {
+    typealias Value = () -> Void
+}
+
+extension FocusedValues {
+    var focusDownloadSearch: (() -> Void)? {
+        get { self[FocusDownloadSearchKey.self] }
+        set { self[FocusDownloadSearchKey.self] = newValue }
     }
 }

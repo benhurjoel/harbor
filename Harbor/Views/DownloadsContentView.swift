@@ -15,7 +15,7 @@ struct DownloadsContentView: View {
             } else {
                 Table(
                     of: DownloadItem.self,
-                    selection: $center.selectedDownloadID,
+                    selection: $center.selectedDownloadIDs,
                     columnCustomization: $columnCustomization
                 ) {
                     TableColumn("Name") { item in
@@ -122,45 +122,55 @@ struct DownloadsContentView: View {
 
     @ViewBuilder
     private func rowContextMenu(for item: DownloadItem) -> some View {
-        if item.status == .browserSessionRequired {
+        let targetIDs = center.contextMenuDownloadIDs(for: item.id)
+
+        if center.canContinueInBrowser(ids: targetIDs) {
             Button("Continue in Harbor") {
                 center.continueInBrowser(id: item.id)
             }
-        } else if item.canPause || item.canResume {
-            Button(item.canPause ? "Pause" : "Resume") {
-                center.togglePauseResume(id: item.id)
+        }
+
+        if center.canPauseDownloads(ids: targetIDs) {
+            Button("Pause") {
+                center.pauseDownloads(ids: targetIDs)
             }
         }
 
-        if item.status == .failed || item.status == .cancelled {
+        if center.canResumeDownloads(ids: targetIDs) {
+            Button("Resume") {
+                center.resumeDownloads(ids: targetIDs)
+            }
+        }
+
+        if center.canRetryDownloads(ids: targetIDs) {
             Button("Retry") {
-                center.retryDownload(id: item.id)
+                center.retryDownloads(ids: targetIDs)
             }
         }
 
-        if item.fileLocationURL != nil {
+        if center.canOpenDownloads(ids: targetIDs) {
             Button("Open File") {
-                center.openDownload(id: item.id)
+                center.openDownloads(ids: targetIDs)
             }
         }
 
         Button("Cancel Download") {
-            center.cancelDownload(id: item.id)
+            center.cancelDownloads(ids: targetIDs)
         }
-        .disabled(item.status == .completed || item.status == .cancelled)
+        .disabled(center.canCancelDownloads(ids: targetIDs) == false)
 
         Divider()
 
         Button("Reveal in Finder") {
-            center.revealInFinder(id: item.id)
+            center.revealInFinder(ids: targetIDs)
         }
 
         Button("Copy Source URL") {
-            center.copySourceURL(id: item.id)
+            center.copySourceURLs(ids: targetIDs)
         }
 
         Button("Remove from List", role: .destructive) {
-            center.removeDownload(id: item.id)
+            center.removeDownloads(ids: targetIDs)
         }
     }
 }

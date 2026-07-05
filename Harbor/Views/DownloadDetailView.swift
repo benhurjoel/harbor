@@ -50,14 +50,6 @@ private struct DownloadInspectorContent: View {
                     )
                 }
 
-                if let message = item.displayLastError, item.status == .failed {
-                    DownloadCallout(
-                        title: "Last Error",
-                        message: message,
-                        systemImage: "exclamationmark.triangle.fill",
-                        tint: .red
-                    )
-                }
             }
             .padding(24)
         }
@@ -517,6 +509,7 @@ private struct DownloadActivitySection: View {
                 ForEach(Array(activityEntries.enumerated()), id: \.element.id) { index, entry in
                     DownloadActivityRow(
                         entry: entry,
+                        isFirst: index == 0,
                         isLast: index == activityEntries.count - 1
                     )
                 }
@@ -526,7 +519,10 @@ private struct DownloadActivitySection: View {
 
     private var entries: [DownloadActivityTimelineEntry] {
         var entries = item.activityEvents.map { event in
-            DownloadActivityTimelineEntry(event: event)
+            DownloadActivityTimelineEntry(
+                event: event,
+                message: activityMessage(for: event.kind)
+            )
         }
 
         appendSyntheticEvent(
@@ -574,15 +570,29 @@ private struct DownloadActivitySection: View {
         case .completed:
             appendSyntheticEvent(kind: .completed, timestamp: item.finishedAt ?? item.updatedAt, to: &entries)
         case .failed:
-            appendSyntheticEvent(kind: .failed, timestamp: item.updatedAt, to: &entries)
+            appendSyntheticEvent(
+                kind: .failed,
+                timestamp: item.updatedAt,
+                message: item.displayLastError,
+                to: &entries
+            )
         case .cancelled:
             appendSyntheticEvent(kind: .cancelled, timestamp: item.updatedAt, to: &entries)
         }
     }
 
+    private func activityMessage(for kind: DownloadActivityKind) -> String? {
+        guard kind == .failed else {
+            return nil
+        }
+
+        return item.displayLastError
+    }
+
     private func appendSyntheticEvent(
         kind: DownloadActivityKind,
         timestamp: Date,
+        message: String? = nil,
         to entries: inout [DownloadActivityTimelineEntry]
     ) {
         guard entries.contains(where: { $0.kind == kind }) == false else {
@@ -593,7 +603,8 @@ private struct DownloadActivitySection: View {
             DownloadActivityTimelineEntry(
                 id: "synthetic-\(kind.rawValue)-\(item.id.uuidString)",
                 kind: kind,
-                timestamp: timestamp
+                timestamp: timestamp,
+                message: message
             )
         )
     }
@@ -603,60 +614,101 @@ private struct DownloadActivityTimelineEntry: Identifiable {
     let id: String
     let kind: DownloadActivityKind
     let timestamp: Date
+    let message: String?
 
-    init(event: DownloadActivityEvent) {
+    init(event: DownloadActivityEvent, message: String? = nil) {
         self.id = event.id.uuidString
         self.kind = event.kind
         self.timestamp = event.timestamp
+        self.message = message
     }
 
     init(
         id: String,
         kind: DownloadActivityKind,
-        timestamp: Date
+        timestamp: Date,
+        message: String? = nil
     ) {
         self.id = id
         self.kind = kind
         self.timestamp = timestamp
+        self.message = message
     }
 }
 
 private struct DownloadActivityRow: View {
     let entry: DownloadActivityTimelineEntry
+    let isFirst: Bool
     let isLast: Bool
+
+    private let markerSize: CGFloat = 22
+    private let verticalPadding: CGFloat = 6
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            VStack(spacing: 3) {
-                ZStack {
-                    Circle()
-                        .fill(entry.kind.tint.opacity(0.14))
+            marker
 
-                    Image(systemName: entry.kind.systemImage)
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(entry.kind.tint)
-                        .accessibilityHidden(true)
-                }
-                .frame(width: 22, height: 22)
+            content
+        }
+        .padding(.vertical, verticalPadding)
+        .background(alignment: .topLeading) {
+            connector
+        }
+    }
 
-                if isLast == false {
-                    Rectangle()
-                        .fill(Color.secondary.opacity(0.22))
-                        .frame(width: 1, height: 18)
-                }
-            }
+    private var marker: some View {
+        ZStack {
+            Circle()
+                .fill(entry.kind.tint.opacity(0.14))
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(entry.kind.title)
-                    .font(.callout.weight(.medium))
+            Image(systemName: entry.kind.systemImage)
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(entry.kind.tint)
+                .accessibilityHidden(true)
+        }
+        .frame(width: markerSize, height: markerSize)
+    }
 
-                Text(DownloadFormatting.dateString(entry.timestamp))
+    private var content: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(entry.kind.title)
+                .font(.callout.weight(.medium))
+
+            Text(DownloadFormatting.dateString(entry.timestamp))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            if let message = entry.message {
+                Text(message)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(.top, 1)
         }
-        .padding(.vertical, 6)
+        .padding(.top, 1)
+    }
+
+    private var connector: some View {
+        GeometryReader { proxy in
+            Path { path in
+                let markerMidX = markerSize / 2
+                let markerTopY = verticalPadding
+                let markerBottomY = verticalPadding + markerSize
+
+                if isFirst == false {
+                    path.move(to: CGPoint(x: markerMidX, y: 0))
+                    path.addLine(to: CGPoint(x: markerMidX, y: markerTopY))
+                }
+
+                if isLast == false {
+                    path.move(to: CGPoint(x: markerMidX, y: markerBottomY))
+                    path.addLine(to: CGPoint(x: markerMidX, y: proxy.size.height))
+                }
+            }
+            .stroke(Color.secondary.opacity(0.22), lineWidth: 1)
+        }
+        .frame(width: markerSize)
     }
 }
 
